@@ -12,7 +12,6 @@ future==0.18.2
 geocoder==1.38.1
 idna==2.10
 numpy==1.20.3
-opencv-python==4.5.2.54
 Pillow==8.2.0
 pycparser==2.20
 PyJWT==2.1.0
