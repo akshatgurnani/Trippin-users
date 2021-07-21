@@ -6,6 +6,8 @@ from functools import wraps
 app = Flask(__name__)
 
 app.config['SECRET_KEY'] = 'secretkeylol'
+
+app.config['SECRET_KEY'] = 'secretkeylol'
 myClient = pymongo.MongoClient("mongodb+srv://akshat:cheems@trippin.3itqh.mongodb.net/myFirstDatabase?retryWrites=true&w=majority",ssl=True,ssl_cert_reqs='CERT_NONE')
 mydb = myClient["trippin"]
 users = mydb["user_data"]
@@ -17,6 +19,9 @@ def token_verify(f):
         
         if 'x-access-token' in request.headers:
             token = request.headers['x-access-token']
+        
+        # token = request.args.get('token')
+        #print(token)
 
         if not token:
             return jsonify({
@@ -38,9 +43,11 @@ def register():
     existing_user = users.find_one(qry)
 
     if existing_user:
-        return "username already exists"
+        return jsonify({'message':"user already exists"})
         
     else:
+        
+        #hashpass = bcrypt.hashpw(request.args['password'].encode('utf-8'), bcrypt.gensalt(10))
         salt = bcrypt.gensalt(10)
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
         users.insert({
@@ -50,20 +57,29 @@ def register():
             "name": request.args["name"],
             "email": request.args["email"],
             "mobile_no": int(request.args["mobile_no"]),
+
             })
-        return "user registered successfully"
+        return jsonify({'message':"user registered successfully"})
 
 
 @app.route('/login', methods = ['POST'])
 def login():
+    #qry = ({"username": request.args["username"]})
     login_name = users.find_one({"username": request.args["username"]})
     
     if login_name:
         if bcrypt.checkpw(request.args['password'].encode('utf-8'), login_name['password']):
-            token = jwt.encode({'username': login_name['username'], 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours = 24)}, app.config['SECRET_KEY'], algorithm="HS256")
+            token = jwt.encode({'username': login_name['username'], 'exp': datetime.datetime.utcnow() + datetime.timedelta(hours = 24)}, app.config['SECRET_KEY'], algorithm="HS256") 
+            # dashboard(login_name)
+            #return dashboard(login_name['username'])
+            # return jsonify({
+            #     'message': 'login successful',
+            #     'token': token
+            # })
             return make_response(jsonify({'token' : token}), 201)
         else:
-            return "user does not match"
+            return jsonify({'message':"user does not match"})
+
     else:
         return make_response("user not verify", 401)
 
@@ -103,4 +119,4 @@ def delete_user(current_user):
     return jsonify({'message': "record deleted successfully"})
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
