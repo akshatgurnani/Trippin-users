@@ -1,12 +1,12 @@
-from flask import Flask, jsonify, request, make_response, redirect, url_for, send_from_directory, abort
+from flask import Flask, json, jsonify, request, make_response, redirect, url_for, send_from_directory, abort
 import pymongo
 import bcrypt, jwt, datetime, uuid, os
 from functools import wraps
-from pymongo import message
+#from pymongo import message
 from werkzeug.utils import secure_filename
 
 
-UPLOAD_FOLDER = './static/images'
+UPLOAD_FOLDER = 'E:\Study\Final_project\images'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask(__name__)
@@ -50,6 +50,28 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def avg_ratings(lst, business_id):
+
+    # new_lst = []
+    # for rate in lst:
+    #     new_lst.append(rate['ratings'])
+
+    count = len(lst)
+    total = sum(lst)
+    avg = total / count
+    result = round(avg, 1)
+
+    myQuery = {"_id": business_id}
+
+    new_data = {"$set":{"average_ratings": result}}
+    
+    status = users.update_one(myQuery, new_data)
+    if status:
+        return True
+
+    return False
+
+
 @app.route('/user_register', methods = ['POST'])
 def register():
     qry = {'username': request.args['username']}
@@ -64,14 +86,18 @@ def register():
         salt = bcrypt.gensalt(10)
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
 
+        id = str(uuid.uuid4())
+        img_url = "http://100.25.142.90/static/images/" + id + ".jpg"
+
         status = users.insert({
-            "_id": str(uuid.uuid4()),
+            "_id": id,
             'username': request.args['username'],
             "password": hashpass,
             "name": request.args["name"],
             "email": request.args["email"],
             "mobile_no": request.args["mobile_no"],
             "role": "user",
+            "image": img_url,
             })
         if status:
             return jsonify({'message':"user registered successfully"})
@@ -84,16 +110,9 @@ def login():
     login_data = ({
         "username": request.args['username'],
         "password": request.args['password'],
-        #"role": request.args['role']
         })
-    # if login_data["role"] == 'business':
-    #     login_name = bus_data.find_one({"username": login_data["username"]})
-
-    # elif login_data["role"] == 'user':
+    
     login_name = users.find_one({"username": login_data["username"]})
-
-    # else:
-    #     return jsonify({"message": "please select for business or not!!"})
 
     if login_name:
         if bcrypt.checkpw(login_data['password'].encode('utf-8'), login_name['password']):
@@ -113,20 +132,7 @@ def login():
 @app.route('/me', methods = ['GET'])
 @token_verify
 def me(current_user):
-    # login_data = ({
-    #     "username": current_user['username'],
-    #     "role": current_user['role']
-    #     })
-
-    # dbs = [users, bus_data]
-    # for db in dbs:
-    #     if (db.find_one({"username": current_user['username']})):
-    #         login_data = db.find_one({"username": current_user['username']})
-
-    # if login_data["role"] == 'business':
-    #     user = bus_data.find_one({"username": login_data["username"]})
-
-    # elif login_data["role"] == 'user':
+    
     user = users.find_one({"_id": current_user["_id"]})
 
     json_data = {}
@@ -160,46 +166,13 @@ def upload_file(current_user):
         if file and allowed_file(file.filename):
             new_name =user['_id'] + '.jpg'
             filename = secure_filename(new_name)
-            #file.save(os.path.join(app.config['UPLOAD_FOLDER'], user['_id']) + '.' + filename.rsplit('.', 1)[1].lower())
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             return jsonify({"message":'file uploaded successfully'})
-
-    # elif request.method == 'GET':
-
-    #     img = user['_id']
-    #     img = f"{img}.jpg"
-    #     #return str(img)
-    #     try:
-    #         return send_from_directory(app.config["UPLOAD_FOLDER"], filename=img, as_attachment=True)
-    #     except FileNotFoundError:
-    #         abort(404)
 
 @app.route('/update', methods = ['PUT'])
 @token_verify
 def me_update(current_user):
-    # login_data = ({
-    #     "username": current_user['username'],
-    #     "role": current_user['role']
-    #     })
-    # if login_data["role"] == 'business':
-    #     user = bus_data.find_one({"username": login_data["username"]})
-
-    #     myQuery = {"username": user['username']}
-
-    #     get_new_data =  request.get_json()
-    #     new_data = {"$set":{}}
-
-    #     for key in get_new_data:
-    #         new_data["$set"][key] = get_new_data[key]
-
-    
-    #     status = bus_data.update_one(myQuery, new_data)
-    #     if status:
-    #         return jsonify({'message': "updated successfully"})
-
-    #     return jsonify({"message":"request cannot be processed, please try again!!"})
-
-    #elif login_data["role"] == 'user':
+   
     user = users.find_one({"_id": current_user["_id"]})
 
     myQuery = {"_id": user['_id']}
@@ -220,22 +193,7 @@ def me_update(current_user):
 @app.route('/delete_user', methods = ['DELETE'])
 @token_verify
 def delete_user(current_user):
-    # login_data = ({
-    #     "username": current_user['username'],
-    #     "role": current_user['role']
-    #     })
-    # if login_data["role"] == 'business':
-    #     user = bus_data.find_one({"username": login_data["username"]})
-
-    #     myQuery = {"username": user['username']}
-    #     status = bus_data.delete_one(myQuery)
-
-    #     if status:
-    #         return jsonify({'message': "record deleted successfully"})
-
-    #     return jsonify({"message":"request cannot be processed, please try again!!"})
-
-    #elif login_data["role"] == 'user':
+    
     user = users.find_one({"_id": current_user["_id"]})
 
     myQuery = {"_id": user['_id']}
@@ -262,9 +220,11 @@ def business_register():
     else:
         salt = bcrypt.gensalt(10)
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
+        id = str(uuid.uuid4())
+        img_url = "http://100.25.142.90/static/images/" + id + ".jpg"
 
         status = users.insert({
-            "_id": str(uuid.uuid4()),
+            "_id": id,
             "username": request.args["username"],
             "password": hashpass,
             "name": request.args["name"],
@@ -275,6 +235,8 @@ def business_register():
             "city": request.args["city"],
             "type": request.args["type"],
             "role": "business",
+            "image": img_url,
+            "average_ratings": 0.0,
             })
 
         if status:
@@ -287,22 +249,18 @@ def places():
     loc = request.args['city']
 
     myQuery = {"city": loc}
-    # display_data = {
-    #     "name": 1,
-    #     "email": 1,
-    #     "mobile_no": 1,
-    #     "address": 1,
-    #     "desc": 1,
-    #     "location": 1,
-    #     "type": 1,
-    # }
+   
     display_data = {
         "username": 0,
         "password": 0,
         "role": 0,
     }
+    places_data = []
     for locs in users.find(myQuery, display_data):
-        return jsonify(locs)
+        places_data.append(locs)
+        
+    if places_data != ' ':    
+        return jsonify(places_data)
 
     else:
         return jsonify({"message": "no places to visit at this location :("})
@@ -312,7 +270,6 @@ def get_image(id):
 
     img = f"{id}.jpg"
     try:
-        #return send_from_directory(app.config["UPLOAD_FOLDER"], filename=image_name, as_attachment=True)
         return redirect(url_for('static', filename='images/' + img), code=301)
     except FileNotFoundError:
         abort(404)
@@ -323,12 +280,45 @@ def get_image(id):
 
 @app.route("/post_reviews",methods = ['POST'])
 @token_verify
-def post_reviews():
-    review_data =  request.get_json()
-    status = Rdata.insert(review_data)
+def post_reviews(current_user):
 
-    if status:
-            return jsonify({'message':"Review registered successfully"})
+    user = users.find_one({"_id": current_user["_id"]})
+    business_id = request.args["business_id"]
+    business = users.find_one({"_id": business_id})
+
+    # if business["image"] == ' ':
+    #     img = "image not found"
+    
+    query = {
+        "user_id": user['_id'],
+        "business_id": business_id,
+    }
+
+    if Rdata.find_one(query):
+        return jsonify({"message": "Cannot review same place multiple times"})
+
+    status1 = Rdata.insert({
+        "_id": str(uuid.uuid4()),
+        "user_id": user['_id'],
+        "business_id": business_id,
+        "business_name": business["name"],
+        "business_username": business["username"],
+        "business_img": business["image"],
+        "name": user['name'],
+        "username": user['username'],
+        "review": request.args["review"],
+        "ratings": float(request.args["ratings"]),
+    })
+
+    reviews_data = Rdata.find({"business_id": business_id})
+    lst = []
+    for i in reviews_data:
+        lst.append(i["ratings"])
+
+    status2 = avg_ratings(lst, business_id)
+
+    if status1 and status2:
+        return jsonify({'message':"Review registered successfully"})
 
     return jsonify({"message":'please try again'})
 
@@ -338,33 +328,24 @@ def get_reviews(id):
     myQuery = {}
     if id == Rdata['user_id']:
         myQuery = {"user_id": id}
-        # display_data = {
-        #     "_id": 0,
-        #     # "user_id": 1,
-        #     # "business_id": 1,
-        #     # "business_name": 1,
-        #     # "review_desc": 1,
-        #     # "ratings": 1,
-        # }
 
     elif id == Rdata['business_id']:
         myQuery = {"business_id": id}
 
-    display_data = {
-        "_id": 0,
-        # "user_id": 1,
-        # "business_id": 1,
-        # "business_name": 1,
-        # "review_desc": 1,
-        # "ratings": 1,
-    }
-    for locs in Rdata.find(myQuery, display_data):
-        return jsonify(locs)
+    else:
+        return jsonify({"message": "No reviews yet :) "})
+
+    rws = []
+    for locs in Rdata.find(myQuery):
+        rws.append(locs)
+
+    if rws != ' ':
+        return jsonify(rws)
 
     else:
         return jsonify({"message": "no reviews yet :("})
 
-@app.route("/update_reviews",methods = ['PUT'])
+@app.route("/update_review",methods = ['PUT'])
 @token_verify
 def update_reviews(current_user):
     user = users.find_one({"_id": current_user["_id"]})
@@ -385,7 +366,7 @@ def update_reviews(current_user):
     return jsonify({"message":"request cannot be processed, please try again!!"})
 
 
-@app.route('/delete_rerview', methods = ['DELETE'])
+@app.route('/delete_review', methods = ['DELETE'])
 @token_verify
 def delete_review(current_user):
     user = users.find_one({"_id": current_user["_id"]})
@@ -398,23 +379,6 @@ def delete_review(current_user):
 
     return jsonify({"message":"request cannot be processed, please try again!!"})
 
-
-@app.route("/avg_ratings",methods = ['GET'])
-def average():
-    raw_data = request.get_json()
-    if raw_data == ' ':
-        return jsonify({"message": "Data not found. List is empty"})
-
-    lst = raw_data['total']
-    total_count = len(lst)
-    total = sum(lst)
-
-    avg = total / total_count
-    result = round(avg, 1)
-    if result == '':
-        return jsonify({"message": 'request cannot be processed, please try again!!'})
-        
-    return jsonify({"result": result})
 
 if __name__ == "__main__":
     app.run(debug=True)
