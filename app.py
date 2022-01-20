@@ -6,7 +6,7 @@ from functools import wraps
 from werkzeug.utils import secure_filename
 
 
-UPLOAD_FOLDER = 'E:\Study\Final_project\images'
+UPLOAD_FOLDER = '~\static\images'
 ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
 app = Flask(__name__)
@@ -93,7 +93,7 @@ def register():
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
 
         id = str(uuid.uuid4())
-        img_url = "http://100.25.142.90/static/images/" + id + ".jpg"
+        img_url = "https://trippinn-app.herokuapp.com/static/images/" + id + ".jpg"
 
         status = users.insert({
             "_id": id,
@@ -245,7 +245,7 @@ def business_register():
         salt = bcrypt.gensalt(10)
         hashpass =  bcrypt.hashpw(request.args['password'].encode('utf-8'),salt)
         id = str(uuid.uuid4())
-        img_url = "http://100.25.142.90/static/images/" + id + ".jpg"
+        img_url = "https://trippinn-app.herokuapp.com/static/images/" + id + ".jpg"
 
         status = users.insert({
             "_id": id,
